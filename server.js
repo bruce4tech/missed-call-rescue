@@ -1,3 +1,7 @@
+console.log("SID:", process.env.TWILIO_ACCOUNT_SID);
+console.log("TOKEN:", process.env.TWILIO_AUTH_TOKEN ? "Loaded" : "Missing");
+console.log("PHONE:", process.env.TWILIO_PHONE_NUMBER);
+
 const express = require('express');
 const twilio = require('twilio');
 
