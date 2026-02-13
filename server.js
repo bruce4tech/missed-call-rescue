@@ -36,7 +36,8 @@ app.post('/call-status', async (req, res) => {
         }
     }
 
-    res.sendStatus(200);
+    res.type('text/xml');
+res.send('<Response></Response>');
 });
 
 app.get('/', (req, res) => {
