@@ -37,6 +37,28 @@ app.post('/call-status', async (req, res) => {
     res.type('text/xml');
     res.send('<Response></Response>');
 });
+
+app.post('/sms-reply', async (req, res) => {
+    const fromNumber = req.body.From;
+    const messageBody = req.body.Body;
+
+    console.log("Incoming SMS from:", fromNumber);
+    console.log("Message:", messageBody);
+
+    try {
+        await client.messages.create({
+            body: `Lead reply from ${fromNumber}: "${messageBody}"`,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: process.env.CONTRACTOR_PHONE_NUMBER
+        });
+        console.log("Forwarded to contractor.");
+    } catch (err) {
+        console.error("Forward error:", err);
+    }
+
+    res.sendStatus(200);
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
