@@ -18,11 +18,9 @@ app.post('/call-status', async (req, res) => {
     console.log("Body:", req.body);
 
     const callStatus = req.body.CallStatus;
-    const callDuration = parseInt(req.body.CallDuration || 0);
     const fromNumber = req.body.From;
 
-    // Only send if call completed AND lasted 2 seconds or less
-    if (callStatus === 'completed' && callDuration <= 2) {
+    if (callStatus === 'no-answer') {
         try {
             await client.messages.create({
                 body: "Sorry we missed your call. What service do you need?",
@@ -39,7 +37,6 @@ app.post('/call-status', async (req, res) => {
     res.type('text/xml');
     res.send('<Response></Response>');
 });
-
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
