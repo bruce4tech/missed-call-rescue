@@ -9,10 +9,18 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 
-// ========================================
+// ===============================
+// SIMPLE ACTIVITY COUNTERS
+// ===============================
+
+let totalMissedCalls = 0;
+let totalReplies = 0;
+let totalForwarded = 0;
+let totalOptOuts = 0;
+
+// ===============================
 // CONTRACTOR MAP (MVP)
-// TwilioNumber → Contractor Profile
-// ========================================
+// ===============================
 
 const contractors = {
     "+18664321841": {
@@ -29,9 +37,9 @@ const contractors = {
     }
 };
 
-// ========================================
+// ===============================
 // MISSED CALL HANDLER
-// ========================================
+// ===============================
 
 app.post('/call-status', async (req, res) => {
 
@@ -39,19 +47,20 @@ app.post('/call-status', async (req, res) => {
     const fromNumber = req.body.From;
     const twilioNumber = req.body.To;
 
-    console.log("Call Status:", callStatus);
-    console.log("From:", fromNumber);
-    console.log("To (Twilio Number):", twilioNumber);
-
     const contractor = contractors[twilioNumber];
 
     if (!contractor) {
-        console.log("No contractor found for number:", twilioNumber);
         return res.type('text/xml').send('<Response></Response>');
     }
 
-    // Only trigger on true missed call
     if (callStatus === 'no-answer') {
+        totalMissedCalls++;
+
+        console.log("---- MISSED CALL ----");
+        console.log("Contractor:", contractor.company);
+        console.log("Caller:", fromNumber);
+        console.log("Total Missed Calls:", totalMissedCalls);
+
         try {
             await client.messages.create({
                 body: contractor.autoMessage,
@@ -59,7 +68,7 @@ app.post('/call-status', async (req, res) => {
                 to: fromNumber
             });
 
-            console.log("Auto-text sent for:", contractor.company);
+            console.log("Auto-text sent.");
         } catch (err) {
             console.error("SMS error:", err.message);
         }
@@ -69,26 +78,47 @@ app.post('/call-status', async (req, res) => {
     res.send('<Response></Response>');
 });
 
-// ========================================
-// INBOUND SMS REPLY HANDLER
-// ========================================
+// ===============================
+// INBOUND SMS HANDLER
+// ===============================
 
 app.post('/sms-reply', async (req, res) => {
 
     const fromNumber = req.body.From;
-    const messageBody = req.body.Body;
+    const messageBody = req.body.Body.trim();
     const twilioNumber = req.body.To;
-
-    console.log("Incoming SMS from:", fromNumber);
-    console.log("Message:", messageBody);
-    console.log("To (Twilio Number):", twilioNumber);
 
     const contractor = contractors[twilioNumber];
 
     if (!contractor) {
-        console.log("No contractor found for number:", twilioNumber);
         return res.sendStatus(200);
     }
+
+    totalReplies++;
+
+    console.log("---- NEW REPLY ----");
+    console.log("From:", fromNumber);
+    console.log("Message:", messageBody);
+    console.log("Total Replies:", totalReplies);
+
+    // ===============================
+    // STOP / OPT-OUT HANDLING
+    // ===============================
+
+    const lower = messageBody.toLowerCase();
+
+    if (lower === "stop" || lower === "unsubscribe" || lower === "cancel") {
+        totalOptOuts++;
+
+        console.log("User opted out:", fromNumber);
+        console.log("Total Opt-Outs:", totalOptOuts);
+
+        return res.sendStatus(200);
+    }
+
+    // ===============================
+    // FORWARD TO CONTRACTOR
+    // ===============================
 
     try {
         await client.messages.create({
@@ -97,7 +127,10 @@ app.post('/sms-reply', async (req, res) => {
             to: contractor.phone
         });
 
-        console.log("Forwarded to contractor:", contractor.company);
+        totalForwarded++;
+        console.log("Forwarded to contractor.");
+        console.log("Total Forwarded:", totalForwarded);
+
     } catch (err) {
         console.error("Forward error:", err.message);
     }
@@ -105,9 +138,9 @@ app.post('/sms-reply', async (req, res) => {
     res.sendStatus(200);
 });
 
-// ========================================
+// ===============================
 // HEALTH CHECK
-// ========================================
+// ===============================
 
 app.get('/', (req, res) => {
     res.send("Missed Call Rescue is running.");
