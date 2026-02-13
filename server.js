@@ -13,31 +13,37 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 
 app.post('/call-status', async (req, res) => {
-    const callStatus = req.body.CallStatus;
-    const callDuration = parseInt(req.body.CallDuration || 0);
-    const fromNumber = req.body.From;
+    try {
+        const callStatus = req.body.CallStatus;
+        const callDuration = parseInt(req.body.CallDuration || 0);
+        const fromNumber = req.body.From;
 
-    console.log("Call Status:", callStatus);
-    console.log("Call Duration:", callDuration);
-    console.log("From:", fromNumber);
+        console.log("Call Status:", callStatus);
+        console.log("Call Duration:", callDuration);
+        console.log("From:", fromNumber);
 
-    // If very short completed call OR no-answer → treat as missed
-    if ((callStatus === 'completed' && callDuration <= 2) || callStatus === 'no-answer') {
-        try {
-            await client.messages.create({
-                body: "Sorry we missed your call. What service do you need?",
-                from: process.env.TWILIO_PHONE_NUMBER,
-                to: fromNumber
-            });
+        // If very short completed call OR no-answer → treat as missed
+        if ((callStatus === 'completed' && callDuration <= 2) || callStatus === 'no-answer') {
+            try {
+                await client.messages.create({
+                    body: "Sorry we missed your call. What service do you need?",
+                    from: process.env.TWILIO_PHONE_NUMBER,
+                    to: fromNumber
+                });
 
-            console.log("Auto-text sent.");
-        } catch (err) {
-            console.error("SMS error:", err);
+                console.log("Auto-text sent.");
+            } catch (smsErr) {
+                console.error("SMS error:", smsErr);
+            }
         }
-    }
 
-    res.type('text/xml');
-res.send('<Response></Response>');
+        res.type('text/xml');
+        res.send('<Response></Response>');
+    } catch (err) {
+        console.error("Route error:", err);
+        res.type('text/xml');
+        res.send('<Response></Response>');
+    }
 });
 
 app.get('/', (req, res) => {
