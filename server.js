@@ -14,36 +14,30 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken);
 
 app.post('/call-status', async (req, res) => {
-    try {
-        const callStatus = req.body.CallStatus;
-        const callDuration = parseInt(req.body.CallDuration || 0);
-        const fromNumber = req.body.From;
+    console.log("Webhook hit");
+    console.log("Body:", req.body);
 
-        console.log("Call Status:", callStatus);
-        console.log("Call Duration:", callDuration);
-        console.log("From:", fromNumber);
+    const callStatus = req.body.CallStatus;
+    const callDuration = parseInt(req.body.CallDuration || 0);
+    const fromNumber = req.body.From;
 
-        if ((callStatus === 'completed' && callDuration <= 2) || callStatus === 'no-answer') {
-            try {
-                await client.messages.create({
-                    body: "Sorry we missed your call. What service do you need?",
-                    from: process.env.TWILIO_PHONE_NUMBER,
-                    to: fromNumber
-                });
+    // Only send if call completed AND lasted 2 seconds or less
+    if (callStatus === 'completed' && callDuration <= 2) {
+        try {
+            await client.messages.create({
+                body: "Sorry we missed your call. What service do you need?",
+                from: process.env.TWILIO_PHONE_NUMBER,
+                to: fromNumber
+            });
 
-                console.log("Auto-text sent.");
-            } catch (smsErr) {
-                console.error("SMS error:", smsErr);
-            }
+            console.log("Auto-text sent.");
+        } catch (err) {
+            console.error("SMS error:", err);
         }
-
-        res.type('text/xml');
-        res.send('<Response></Response>');
-    } catch (err) {
-        console.error("Route error:", err);
-        res.type('text/xml');
-        res.send('<Response></Response>');
     }
+
+    res.type('text/xml');
+    res.send('<Response></Response>');
 });
 
 const PORT = process.env.PORT || 3000;
